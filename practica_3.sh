@@ -1,70 +1,64 @@
-leerBorrar(){
-    oldIFS=$IFS
-    IFS=','
-    mkdir -p /extra/backup
-    while read nombre ignore
-    do
-        id $nombre 2> /dev/null > /dev/null
-        if [ $? -eq 0 ]
-        then
-            uhome=$(cat /etc/passwd | egrep "$nombre" | grep -o ":/[^:]*:" | tr -d ':')
-            tar -cvf /extra/backup/$nombre.tar $uhome 2> /dev/null > /dev/null
-            if [ $? -eq 0 ]
-            then
-                userdel -r $nombre 2> /dev/null
-            fi
-        fi
-        
-    done < $1
-    IFS=$oldIFS      
-}
+#!/bin/bash
+# 735061,Adell Pina,Alejandro ,M,4,A 
+# 746207,Garcia Rodriguez,Felix,M,4,A 
 
-leerInsertar(){
-    oldIFS=$IFS
-    IFS=,
-    while read nombre contrasena nomC
-    do
-        if [[ -z "$nombre" || -z "$contrasena" || -z "${nomC}" ]]
-        then
-            echo "Campo invalido"
-        else
-            useradd -c "$nomC" $nombre -m -k /etc/skel -K UID_MIN=1815 -U 2> /dev/null
-            anyadido=$?
-            if [ $anyadido -eq 9 ]
-            then
-                    echo "El usuario $nombre ya existe"
-            elif [ $anyadido -eq 0 ]
-            then
-                usermod -f0 $nombre
-                echo "${nombre}:$contrasena" | chpasswd
-                passwd -x30 $nombre > /dev/null
-     
-                echo "$nomC ha sido creado"
-            fi
-        fi
-    done < $1
-    IFS=$oldIFS      
-}
+if [[ $(id -u) != 0 ]] #El usuario efectivo distinto de 0
+	then
+		echo -e "Este script necesita privilegios de administracion"
+		exit 1
+fi
+
+if [[ $1 != "-a" && $1 != "-s" ]]
+	then
+		>&2 echo "Opcion invalida"
+		exit 1
+fi
+
+if [ $# != 2 ]
+	then
+  		>&2 echo "Numero incorrecto de parametros"
+		exit 1
+fi
 
 
+#Caso añadir usuarios
+if [[ $1 = "-a" ]]
+	then
+		while IFS=, read usuario contrasena nombre          #delimitador del fichero es ','
+		do
+		if [[ -z "$usuario" || -z "$contrasena" || -z "$nombre" ]]    #variables no vacias
+			then
+				echo "Campo invalido"
+				exit 1
+		fi
+	
+		if id -u "$usuario"  2>&1 >/dev/null #redirige la salida para que no se muestre 
+			then
+				echo "El usuario $usuario ya existe"
+			else
+				useradd -c "$nombre" "$usuario" -m -k /etc/skel -K UID_MIN=1815 -K PASS_MAX_DAYS=30 -U  # -K quita opciones por defecto , -U crea grupo mismo nombre , -m crea directorio home
+				usermod -d "/home/$usuario" $usuario                          # -d cambia direccion de la carpeta home
+				echo "$usuario:$contrasena" | chpasswd
+				echo "$nombre ha sido creado"
+		fi
+	done < $2
+fi
 
-if [ $(id -u) -eq 0 ]
-then
-     if [ $# -ne 2 ]
-     then
-            echo "Numero incorrecto de parametros"
-    else
-        if [ $1 == "-a" ]
-        then
-            leerInsertar $2
-        elif [ $1 == "-s" ]
-        then
-            leerBorrar $2
-        else
-            echo "Opcion invalida" >&2
-        fi
-    fi
-else
-    echo "Este script necesita privilegios de administracion"
-    exit 1
+#Caso borrar usuarios
+if [[ $1 = "-s" ]]
+	then
+		if [ ! -d "/extra/backup" ]						#Si no existe crea el directorio
+		then
+			mkdir -p "/extra/backup"					
+		fi
+		while IFS=, read usuario contrasena nombre     #delimitador fichero ','
+		do
+		if id -u "$usuario" >/dev/null 2>&1			   #Si existe el usuario (no muestra el mensaje)
+		then
+			if [ $( tar Pcfz "/extra/backup/$usuario.tar" "/home/$usuario")=0 ]       #Si se consigue crear la backup
+			then
+				userdel -f -r $usuario											  # -f -r para borrarlo aunque tenga sesion iniciada y borrar el directorio home
+			fi
+		fi
+	done < $2
 fi
