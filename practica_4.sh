@@ -1,6 +1,6 @@
 #!/bin/bash
-
-# Alejandro Adell Pina :735061
+#746207, Garcia Rodrigez, Felix, T, 1, B
+#737400, Echavarri Sola, Alvaro, T, 1, B
 
 if [ $(id -u) != 0 ]
 	then
@@ -41,7 +41,7 @@ do
     # Guardar maquina leída de fichero
     # Comprobación de conexión con ella a través de ssh
     maquinaLeida=$(echo "$linea" | cut -d "," -f1)
-    ssh -n -q -o ConnectTimeout=1 as@$maquinaLeida -i $HOME/.ssh/id_as_ed25519 exit
+    ssh -n -q as@$maquinaLeida -i $HOME/.ssh/id_as_ed25519 exit
     if [ $? -ne 0 ]
     then
         # La conexión ssh no ha funcionado
@@ -70,7 +70,7 @@ do
                 if [ $? -ne 0 ]
 	              then
                     # El usuario no existe y se añade
-                    ssh -n user@$maquinaLeida -i $HOME/.ssh/id_ed25519 "sudo useradd -c "\"${nombUser}\"" -U -K UID_MIN=1000 -m -k /etc/skel $idUsuario"
+                    ssh -n user@$maquinaLeida -i $HOME/.ssh/id_ed25519 "sudo useradd -c "\"${nombUser}\"" -U -K UID_MIN=1000 -m $idUsuario"
                     ssh -n user@$maquinaLeida -i $HOME/.ssh/id_ed25519 "echo $idUsuario:$password | sudo chpasswd"
                     ssh -n user@$maquinaLeida -i $HOME/.ssh/id_ed25519 "sudo passwd -x30 "$idUsuario" &> /dev/null"
                     ssh -n user@$maquinaLeida -i $HOME/.ssh/id_ed25519 "sudo usermod -s /bin/bash "$idUsuario" &> /dev/null"
